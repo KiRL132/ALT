@@ -36,3 +36,49 @@ hostnamectl set-hostname <NAME>; exec bash
 | BR-SRV         | ens192      | 192.168.0.158    | 255.255.255.224/27  | 192.168.0.129|
 | CLI            | ens192      | 192.168.0.170    | 255.255.255.252/30  | 192.168.0.169|
 |                | ens224      | 192.168.0.174    | 255.255.255.252/30  | 192.168.0.173|
+
+Чтобы поменять адрес интерфейса
+```
+nano /etc/net/ifaces/ens***/ipv4address
+```
+Чтобы поменять шлюз по умолчанию интерфейса
+```
+nano /etc/net/ifaces/ens***/ipv4route
+```
+Чтобы поменять настройки конфигурации
+```
+nano /etc/net/ifaces/ens***/options
+```
+# Поднимаем GRE-туннель средствами nmtui (бонусное задание)
+Установление пакета
+```
+apt-get install -y NetworkMnager-{daemon,vui}
+```
+Включение в автозагрузку
+```
+systemctl enable --now NetworkManager
+```
+Вход в интерфейс
+```
+nmtui
+```
+![image](https://github.com/Ganibal-24/demo2024/assets/148868527/aa3f89b4-258d-416d-b640-841dc113e882)
+
+Добавить IP tunnel
+
+![image](https://github.com/Ganibal-24/demo2024/assets/148868527/7119312a-f41a-46c5-bf1e-7d04fe7f29ac)
+
+![image](https://github.com/Ganibal-24/demo2024/assets/148868527/102808ba-b1f2-4e68-a05c-7b8afa776640)
+
+Для HQ-R прописываем 10.0.0.1/30, для BR-R 10.0.0.2/30
+
+Для HQ-R:
+```
+nmcli connection modify HQ-R ip-tunnel.ttl 64
+ip r add 192.168.0.128/27 dev gre1
+```
+Для BR-R:
+```
+nmcli connection modify BR-R ip-tunnel.ttl 64
+ip r add 192.168.0.0/25 dev gre1
+```
