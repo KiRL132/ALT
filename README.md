@@ -251,3 +251,52 @@ chmod +x backup-script.sh
 ```
 tar -tf /opt/backup/hq-r-00.00.00.tgz | less
 ```
+# 7. Настройте подключение по SSH для удалённого конфигурирования устройства
+# Выполнение: 
+На HQ-SRV меняем порт с 22 на 2222:
+```
+sed -i "s/#Port 22/Port 2222/g" /etc/openssh/sshd_config
+```
+Перезагружаем службу sshd:
+```
+systemctl restart sshd
+```
+Проверка:
+```
+ss -tlpn | grep sshd
+```
+На HQ-R устанавливаем nftables:
+```
+apt-get install -y nftables
+```
+Включаем и добавляем в автозагрузку службу nftables:
+```
+systemctl enable --now nftables
+```
+Создаём правило:
+```
+nft add table inet nat
+```
+Добавляем цепочку в таблицу:
+```
+nft add chain inet nat prerouting '{ type nat hook prerouting priority 0; }'
+```
+Добавляем ещё одно правило:
+```
+nft add rule inet nat prerouting ip daddr 192.168.0.161 tcp dport 22 dnat to 192.168.0.10:2222
+```
+Сохраняем правила:
+```
+nft list ruleset | tail -n 7 | tee -a /etc/nftables/nftables.nft
+```
+Перезапускаем службу:
+```
+systemctl restart nftables
+```
+Проверка на BR-R:
+```
+ssh admin@192.168.0.161
+password
+hostname
+```
+
