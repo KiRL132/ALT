@@ -50,6 +50,7 @@ nano /etc/net/ifaces/ens***/ipv4route
 nano /etc/net/ifaces/ens***/options
 ```
 # Поднимаем GRE-туннель средствами nmtui (бонусное задание)
+# Выполнение:
 Установление пакета
 ```
 apt-get install -y NetworkMnager-{daemon,vui}
@@ -82,3 +83,109 @@ ip r add 192.168.0.128/27 dev gre1
 nmcli connection modify BR-R ip-tunnel.ttl 64
 ip r add 192.168.0.0/25 dev gre1
 ```
+# Настройте NAT на всех маршрутизаторах (бонусное задание)
+# Выполнение:
+Устанавливаем пакет:
+```
+apt-get -y install firewalld
+```
+Задаём автозагрузку:
+```
+systemctl enable --now firewalld
+```
+Прописываем интерфейс, который смотрит во внешнюю сеть:
+```
+firewall-cmd --permanent --zone=public --add-interface=ens192
+```
+Прописываем интерфейс, который смотрит во внутреннюю сеть:
+```
+firewall-cmd --permanent --zone=trusted --add-interface=ens224
+firewall-cmd --permanent --zone=trusted --add-interface=ens256
+```
+Включаем NAT:
+```
+firewall-cmd --permanent --zone=public --add-masquerade
+```
+Сохраняем правила:
+```
+firewall-cmd --reload
+```
+# 2. Настройте внутреннюю динамическую маршрутизацию по средствам FRR
+# Выполнение:
+Установил пакет FRR:
+```
+apt-get install -y frr
+```
+Проверил состояние:
+```
+systemctl status frr
+```
+Вошёл в файл:
+```
+nano /etc/frr/daemons
+```
+Изменил значение:
+```
+ospfd=yes
+```
+Включаю и добавляю в автозагрузку FRR:
+```
+systemctl enable --now frr
+```
+Вошёл в настройку маршрутизации:
+```
+vtysh
+```
+Вхожу в конфигурацию терминала, затем запускаю процесс и добавляю сети:
+```
+conf t
+router ospf
+passive-interface default
+ network 192.168.0.0/25 area 0
+ network 10.0.0.0/30 area 0
+```
+Просматриваю соседей:
+```
+show ip ospf neighbor
+```
+Далее нужно прописать sysctl -w net.ipv4.ip_forward=1. Затем раскомментировать сроку net.ipv4.ip_forward в файле /etc/sysctl.conf. Сохранить настройку в vtysh. Проверить настройку можно с помощью команды sysctl -a | grep forward.
+# 3. Настройте автоматическое распределение IP-адресов на роутере HQ-R
+# Выполнение:
+Установка DHCP
+```
+apt-get install -y dhcp-server
+```
+Вошёл в файл
+```
+nano /etc/sysconfig/dhcpd 
+```
+Указал интерфейс который смотрит на HQ-SRV
+```
+DHCPDARGS=ens224
+Ctrl + s - сохранил изменения
+Ctrl + x - вышел с файла
+```
+Далее следует настройка раздачи адресов, а для этого захожу в файл:
+```
+nano /etc/dhcp/dhcpd.conf
+```
+Прописываю конфиг
+```
+# dhcp.conf
+
+default-lease-time 6000;
+max-lease-time 72000;
+
+subnet 192.168.0.0 netmask 255.255.255.128 {
+range 192.168.0.10 192.168.0.125;
+option routers 192.168.0.1;
+}
+Ctrl + s - сохранил изменения
+Ctrl + x - вышел с файла
+```
+Повторяю конфиг в файле /etc/dhcp/dhcpd.conf.example
+Запускаю и добавляю в автозагрузку слжубу 
+```
+systemctl enable --now dhcpd
+```
+Проверить DHCP можно при помощи HQ-SRV, включив на нём DHCP.
