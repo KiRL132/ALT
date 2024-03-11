@@ -219,3 +219,35 @@ systemctl enable --now iperf3
 ```
 iperf3 -c 192.168.0.162
 ```
+# 6. Составьте backup скрипты для сохранения конфигурации сетевых устройств
+# Выполнение:
+Создаю простой скрипт:
+```
+nano backup-script.sh
+```
+Содержимое файла:
+```
+#!/bin/bash
+
+echo "Start backup!"
+
+backup_dir="/etc"
+dest_dir="/opt/backup"
+
+mkdir -p $dest_dir
+tar -p $dest_dir/$(hostname -s)-$(date +"%d.%m.%y").tgz $backup_dir
+
+echo "Done!"
+```
+Назначаю права на исполнение для данного файла:
+```
+chmod +x backup-script.sh
+```
+Выполняю запуск скрипта:
+```
+./backup-script.sh
+```
+Посмотреть содержание архива:
+```
+tar -tf /opt/backup/hq-r-00.00.00.tgz | less
+```
